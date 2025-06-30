@@ -4,7 +4,6 @@ import numpy as np
 from ultralytics import YOLO
 from deep_sort_realtime.deepsort_tracker import DeepSort
 
-# Paths
 ROOT_DIR = os.path.dirname(__file__)
 VIDEO_PATH = os.path.join(ROOT_DIR, '..', 'data', '15sec_input_720p.mp4')
 WEIGHTS_PATH = os.path.join(ROOT_DIR, '..', 'weights', 'yolov11.pt')
@@ -12,20 +11,18 @@ OUTPUT_DIR = os.path.join(ROOT_DIR, '..', 'detections')
 
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
-# Load YOLOv11 model
 model = YOLO(WEIGHTS_PATH)
 print("Model class names:", model.names)
 
-# Initialize DeepSORT
+# DeepSORT
 tracker = DeepSort(
-    max_age=10,           # live 40 frames without seeing the player
-    n_init=5,                # need 6 hits before confirming a new track
-    nms_max_overlap=1,     # moderate NMS to suppress duplicate boxes
-    max_cosine_distance=0.20    # tighter ReID matching
+    max_age=10,           
+    n_init=5,               
+    nms_max_overlap=1.0,   
+    max_cosine_distance=0.20   
 )
 
 
-# Draw tracking results
 def draw_tracks(frame, tracks):
     for track in tracks:
         if not track.is_confirmed():
@@ -36,16 +33,16 @@ def draw_tracks(frame, tracks):
         cv2.putText(frame, f"ID {track_id}", (int(x), int(y)-10), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255,0,0), 2)
     return frame
 
-# Main loop
+
 if __name__ == '__main__':
     cap = cv2.VideoCapture(VIDEO_PATH)
     frame_idx = 0
     print("Starting YOLO + DeepSORT tracking with player-only filter...")
 
-    # Video writer setup
+
     video_output_path = os.path.join(OUTPUT_DIR, 'test2.avi')
     fourcc = cv2.VideoWriter_fourcc(*'XVID')
-    video_writer = None  # Will initialize after first valid frame
+    video_writer = None  
 
     while True:
         if frame_idx >= 500:
@@ -54,7 +51,7 @@ if __name__ == '__main__':
         if not ret:
             break
 
-        # YOLO detection
+        
         results = model(frame)[0]
         detections = []
 
@@ -71,22 +68,22 @@ if __name__ == '__main__':
             h = y2 - y1
             detections.append(([x1, y1, w, h], conf, 'player'))
 
-        # Update tracker
+        
         tracks = tracker.update_tracks(detections, frame=frame)
 
         if frame_idx < 500:
             out = draw_tracks(frame.copy(), tracks)
             print(frame_idx)
 
-            # Save image
+        
             # cv2.imwrite(os.path.join(OUTPUT_DIR, f"lowconflowage_{frame_idx:03d}.jpg"), out)
 
-            # Init video writer once
+            
             if video_writer is None:
                 height, width, _ = out.shape
                 video_writer = cv2.VideoWriter(video_output_path, fourcc, 20.0, (width, height))
 
-            # Write frame to video
+            
             video_writer.write(out)
 
         frame_idx += 1
